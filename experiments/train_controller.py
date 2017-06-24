@@ -83,6 +83,7 @@ Rt = np.log(1+Rt)
 
 from scipy.special import logit
 
+Rt = np.clip(Rt,a_x+1e-5,b_x-1e-5)
 Rt = logit((Rt - a_x) / (b_x- a_x))
 
 X1[:,:,3:4] = Rt

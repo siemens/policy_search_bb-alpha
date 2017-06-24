@@ -33,7 +33,8 @@ import pdb
 from collections import OrderedDict
 
 import lasagne
-from lasagne.updates import adam
+from lasagne.updates import total_norm_constraint
+import lasagne.utils as utils
 
 class PolicySearch:
     def __init__(self,params,params_task,X,model,policy):
@@ -51,7 +52,7 @@ class PolicySearch:
         cost  =  self.control(self.x)
 
         self.fwpass  = theano.function(inputs=[self.x], outputs = cost,allow_input_downcast=True)
-        self.train_func = theano.function(inputs=[self.x],outputs=[cost], updates=adam(cost,lasagne.layers.get_all_params(self.policy,trainable=True),learning_rate=self.params['learning_rate']))
+        self.train_func = theano.function(inputs=[self.x],outputs=[cost], updates=self.adam(cost,lasagne.layers.get_all_params(self.policy,trainable=True),learning_rate=self.params['learning_rate']))
 
         self.policy_network = theano.function(inputs=[self.x],outputs=self.predict(self.x))
 
@@ -147,5 +148,38 @@ class PolicySearch:
         X = (X - self.model.mean_X.astype(theano.config.floatX)) / self.model.std_X.astype(theano.config.floatX)
         return lasagne.layers.get_output(self.policy,X)
     
+
+    def adam(self,cost, params, learning_rate=0.001, beta1=0.9,
+             beta2=0.999, epsilon=1e-8):
+
+        all_grads = T.grad(cost=cost, wrt=params)
+        all_grads = total_norm_constraint(all_grads,10)
     
+        grad_norm = T.sqrt(sum(map(lambda x: T.sqr(x).sum(), all_grads)))
+        not_finite = T.or_(T.isnan(grad_norm), T.isinf(grad_norm))
+    
+        t_prev = theano.shared(utils.floatX(0.))
+        updates = OrderedDict()
+    
+        t = t_prev + 1
+        a_t = learning_rate*T.sqrt(1-beta2**t)/(1-beta1**t)
+    
+        for param, g_t in zip(params, all_grads):
+            g_t = T.switch(not_finite, 0.1 * param,g_t)
+            value = param.get_value(borrow=True)
+            m_prev = theano.shared(np.zeros(value.shape, dtype=value.dtype),
+                                   broadcastable=param.broadcastable)
+            v_prev = theano.shared(np.zeros(value.shape, dtype=value.dtype),
+                                   broadcastable=param.broadcastable)
+    
+            m_t = beta1*m_prev + (1-beta1)*g_t
+            v_t = beta2*v_prev + (1-beta2)*g_t**2
+            step = a_t*m_t/(T.sqrt(v_t) + epsilon)
+    
+            updates[m_prev] = m_t
+            updates[v_prev] = v_t
+            updates[param] = param - step
+    
+        updates[t_prev] = t
+        return updates
     
