@@ -89,21 +89,21 @@ def evaluate(fstr,do_warmup=True):
             env = IDS((k+1)*10)
             if do_warmup == True:
                 burnin = 15  + np.random.randint(50)
-                st = np.zeros((15,env.visibleState().shape[0]))
+                st = np.zeros((15,env.visibleState()[:-1].shape[0]))
                 for l in range(burnin):
                     at = 2*np.random.rand(3) -1
                     env.step(at)
-                    st = np.vstack((st[1:,:],env.visibleState().reshape((1,7))))
+                    st = np.vstack((st[1:,:],env.visibleState()[:-1].reshape((1,7))))
             else:
-                st = env.visibleState().reshape((1,-1))
+                st = env.visibleState()[:-1].reshape((1,-1))
                 st = np.tile(st,[15,1])
     
             traj = np.zeros(100)
             for l in range(100):
                 at = predict(np.copy(st),norm,bounds)
                 env.step(at)
-                st = np.vstack((st[1:,:],env.visibleState().reshape((1,7))))
-                traj[l] = env.visibleState()[-1]
+                st = np.vstack((st[1:,:],env.visibleState()[:-1].reshape((1,7))))
+                traj[l] = env.visibleState()[-2]
             data[k,j,:] = traj
     print fstr + ': ' + str(data.mean())
     return data

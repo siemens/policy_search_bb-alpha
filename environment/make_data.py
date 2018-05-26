@@ -73,16 +73,16 @@ for k in range(n_runs):
             states[j,:] = env.visibleState()
 
             if j >= history + 5:
-                feat = np.hstack((states[j-(history-1):j+1,1:4],states[j-history:j,-1:]))
+                feat = np.hstack((states[j-(history-1):j+1,1:4],states[j-history:j,-2:-1]))
                 feat = np.hstack((s,feat.ravel()))
 
                 if k < n_runs_train:
                     X_train[idx_tr] = feat
-                    Y_train[idx_tr] = states[j,-1:]
+                    Y_train[idx_tr] = states[j,-2:-1]
                     idx_tr += 1
                 else:
                     X_test[idx_te] = feat
-                    Y_test[idx_te] = states[j,-1:]
+                    Y_test[idx_te] = states[j,-2:-1]
                     idx_te += 1
 
 
